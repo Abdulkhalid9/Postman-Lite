@@ -64,7 +64,8 @@ postman-lite/
 │   ├── server.js                 # Bootstrap: static hosting + mount routes
 │   ├── config.js                 # Port, timeouts, size caps
 │   ├── routes/
-│   │   └── proxy.routes.js       # POST /api/proxy
+│   │   ├── proxy.routes.js       # POST /api/proxy
+│   │   └── echo.routes.js        # /api/echo — reflects any method (incl. QUERY)
 │   ├── controllers/
 │   │   └── proxy.controller.js   # Validate payload + shape the HTTP response
 │   ├── services/
@@ -157,3 +158,20 @@ After starting the server, try:
 - `GET https://jsonplaceholder.typicode.com/users?_limit=3` — JSON formatting, params
 - `POST https://jsonplaceholder.typicode.com/posts` with a JSON body — request bodies
 - Create an environment with `BASE_URL=https://jsonplaceholder.typicode.com`, then request `{{BASE_URL}}/todos/1` — variables
+
+### Testing the QUERY method
+
+`QUERY` is a new (2024 draft) HTTP method that public APIs don't implement yet, so
+sending it to them returns `404 Cannot QUERY …` / `405` — which itself proves the app
+*sent* a real QUERY request (a browser's `fetch()` can't, and cross-origin CORS blocks it).
+
+To see a full **200** round-trip, send QUERY to this app's own built-in echo endpoint,
+which reflects any method back:
+
+```
+method: QUERY   URL: <this site>/api/echo     → 200  { "method": "QUERY", ... }
+```
+
+Locally that's `http://localhost:5000/api/echo`; on the deployed site it's
+`https://<your-app>.onrender.com/api/echo`. The proxy sends the method through Node's
+core `http.request`, so `QUERY` flows through exactly like `GET` or `POST`.

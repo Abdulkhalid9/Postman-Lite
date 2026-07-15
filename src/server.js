@@ -23,6 +23,7 @@ const path = require('path');
 
 const { PORT, JSON_BODY_LIMIT } = require('./config');
 const proxyRoutes = require('./routes/proxy.routes');
+const echoRoutes = require('./routes/echo.routes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // API routes
 app.use('/api', proxyRoutes);
+app.use('/api', echoRoutes); // GET/POST/…/QUERY → /api/echo (reflects the request)
 
 app.listen(PORT, () => {
   console.log(`⚡ Postman Lite running at http://localhost:${PORT}`);
