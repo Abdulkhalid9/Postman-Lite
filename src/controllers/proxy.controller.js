@@ -18,7 +18,9 @@ async function handleProxy(req, res) {
   }
 
   try {
-    const result = await performProxyRequest({ url, method, headers, body });
+    // Pass our own host so self-referential calls (e.g. QUERY to this app's
+    // /api/echo) are routed over loopback, bypassing any CDN in front.
+    const result = await performProxyRequest({ url, method, headers, body, selfHost: req.headers.host });
     res.json(result);
   } catch (err) {
     res.status(err.statusCode || 502).json({ error: err.message || 'Proxy request failed' });

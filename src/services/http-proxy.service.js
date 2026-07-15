@@ -13,7 +13,7 @@
 const http = require('http');
 const https = require('https');
 
-const { REQUEST_TIMEOUT_MS } = require('../config');
+const { REQUEST_TIMEOUT_MS, PORT } = require('../config');
 const { sanitizeHeaders } = require('../utils/validation');
 const { collectResponse, decodeBody } = require('../utils/response-decoder');
 const { describeNetworkError, elapsedMs } = require('../utils/network-errors');
@@ -33,20 +33,33 @@ function withDefaultUserAgent(headers) {
 /**
  * Performs the proxied request.
  *
- * @param   {object} definition  { url, method, headers, body }
+ * @param   {object} definition  { url, method, headers, body, selfHost }
  * @returns {Promise<object>}    { status, statusText, headers, body,
  *                                 isBase64, timeMs, sizeBytes }
  */
-function performProxyRequest({ url, method, headers = {}, body = null }) {
+function performProxyRequest({ url, method, headers = {}, body = null, selfHost = null }) {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
-    const transport = target.protocol === 'https:' ? https : http;
-    const startedAt = process.hrtime.bigint();
-
     const outgoingHeaders = withDefaultUserAgent(sanitizeHeaders(headers));
 
+    // If the request targets THIS app's own host, route it over loopback instead
+    // of back out to the public internet. Besides avoiding a wasteful round-trip,
+    // this bypasses any CDN/proxy in front of the deployment — e.g. Cloudflare on
+    // Render rejects non-standard methods like QUERY at the edge, so a QUERY to
+    // our own /api/echo would 405 before reaching us. Loopback lets the deployed
+    // app demonstrate QUERY end-to-end against itself.
+    let requestTarget = target;
+    let transport = target.protocol === 'https:' ? https : http;
+    if (selfHost && target.host === selfHost) {
+      requestTarget = new URL(target.pathname + target.search, `http://127.0.0.1:${PORT}`);
+      transport = http;
+      outgoingHeaders['Host'] = selfHost;
+    }
+
+    const startedAt = process.hrtime.bigint();
+
     const proxyReq = transport.request(
-      target,
+      requestTarget,
       {
         method: method.toUpperCase(),
         headers: outgoingHeaders,
