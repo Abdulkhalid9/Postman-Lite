@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postman Lite — API Testing Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M6.5 2.5 L2 8 H4.8 V21 H8.2 V8 H11 Z' fill='%2358a6ff'/><path d='M17.5 21.5 L13 16 H15.8 V3 H19.2 V16 H22 Z' fill='%233fb950'/></svg>" />
+</head>
+<body>
+
+  <!-- ======================= APP HEADER ======================= -->
+  <header class="app-header">
+    <div class="header-left">
+      <button id="btn-menu" class="btn btn-icon btn-menu" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path class="logo-up" d="M6.5 2.5 L2 8 H4.8 V21 H8.2 V8 H11 Z" />
+            <path class="logo-down" d="M17.5 21.5 L13 16 H15.8 V3 H19.2 V16 H22 Z" />
+          </svg>
+        </span>
+        <h1>Postman <span class="brand-accent">Lite</span></h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="env-selector" class="env-selector" title="Active environment">
+        <option value="">No Environment</option>
+      </select>
+      <button id="btn-curl-import" class="btn btn-ghost" title="Import a cURL command">Import cURL</button>
+      <button id="btn-theme-toggle" class="btn btn-icon" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ======================= SIDEBAR ======================= -->
+    <aside class="sidebar">
+      <nav class="sidebar-tabs">
+        <button class="sidebar-tab active" data-panel="collections">Collections</button>
+        <button class="sidebar-tab" data-panel="history">History</button>
+        <button class="sidebar-tab" data-panel="environments">Environments</button>
+      </nav>
+
+      <!-- Collections panel -->
+      <section id="panel-collections" class="sidebar-panel active">
+        <div class="panel-toolbar">
+          <button id="btn-new-collection" class="btn btn-small">+ New Collection</button>
+        </div>
+        <div id="collections-tree" class="collections-tree"></div>
+      </section>
+
+      <!-- History panel -->
+      <section id="panel-history" class="sidebar-panel">
+        <div class="panel-toolbar">
+          <button id="btn-clear-history" class="btn btn-small btn-danger-ghost">Clear All</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </section>
+
+      <!-- Environments panel -->
+      <section id="panel-environments" class="sidebar-panel">
+        <div class="panel-toolbar">
+          <button id="btn-new-env" class="btn btn-small">+ New Environment</button>
+        </div>
+        <div id="env-list" class="env-list"></div>
+      </section>
+    </aside>
+
+    <!-- Backdrop behind the mobile sidebar drawer (tap to close) -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+
+    <!-- ======================= MAIN AREA ======================= -->
+    <main class="main-area">
+
+      <!-- Request name banner (shown when a saved request is open) -->
+      <div id="request-title" class="request-title hidden"></div>
+
+      <!-- URL bar -->
+      <div class="url-bar">
+        <select id="method-select" class="method-select">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>PATCH</option>
+          <option>DELETE</option>
+          <option>QUERY</option>
+        </select>
+        <input id="url-input" class="url-input" type="text"
+               placeholder="Enter request URL, e.g. {{BASE_URL}}/api/users" spellcheck="false" />
+        <button id="btn-send" class="btn btn-primary">Send</button>
+        <button id="btn-save" class="btn" title="Save to a collection">Save</button>
+        <button id="btn-snippet" class="btn btn-ghost" title="Generate code snippet">&lt;/&gt;</button>
+      </div>
+
+      <!-- Request configuration tabs -->
+      <nav class="req-tabs">
+        <button class="req-tab active" data-tab="params">Params <span id="badge-params" class="badge hidden"></span></button>
+        <button class="req-tab" data-tab="headers">Headers <span id="badge-headers" class="badge hidden"></span></button>
+        <button class="req-tab" data-tab="body">Body</button>
+        <button class="req-tab" data-tab="auth">Auth</button>
+      </nav>
+
+      <div class="req-panels">
+        <!-- Query params -->
+        <section id="tab-params" class="req-panel active">
+          <p class="panel-hint">Query parameters are appended to the URL, e.g. <code>?page=2&amp;limit=10</code></p>
+          <div id="params-rows" class="kv-rows"></div>
+        </section>
+
+        <!-- Headers -->
+        <section id="tab-headers" class="req-panel">
+          <p class="panel-hint">Custom request headers, e.g. <code>Content-Type</code>, <code>Authorization</code></p>
+          <div id="headers-rows" class="kv-rows"></div>
+        </section>
+
+        <!-- Body -->
+        <section id="tab-body" class="req-panel">
+          <div class="body-type-picker">
+            <label><input type="radio" name="body-type" value="none" checked /> none</label>
+            <label><input type="radio" name="body-type" value="json" /> JSON</label>
+            <label><input type="radio" name="body-type" value="raw" /> Raw Text</label>
+            <label><input type="radio" name="body-type" value="form-data" /> Form Data</label>
+            <label><input type="radio" name="body-type" value="urlencoded" /> x-www-form-urlencoded</label>
+          </div>
+
+          <div id="body-editor-wrap" class="body-editor-wrap hidden">
+            <div class="editor-toolbar">
+              <button id="btn-beautify-json" class="btn btn-small btn-ghost hidden">Beautify</button>
+              <span id="json-validity" class="json-validity"></span>
+            </div>
+            <div class="code-editor">
+              <div id="body-gutter" class="line-gutter" aria-hidden="true">1</div>
+              <textarea id="body-editor" class="body-editor" spellcheck="false"
+                        placeholder='{ "name": "John", "email": "john@example.com" }'></textarea>
+            </div>
+          </div>
+
+          <div id="body-form-wrap" class="hidden">
+            <div id="form-rows" class="kv-rows"></div>
+          </div>
+        </section>
+
+        <!-- Auth -->
+        <section id="tab-auth" class="req-panel">
+          <div class="auth-type-picker">
+            <label>Type</label>
+            <select id="auth-type">
+              <option value="none">No Auth</option>
+              <option value="bearer">Bearer Token</option>
+              <option value="basic">Basic Auth</option>
+              <option value="apikey">API Key</option>
+            </select>
+          </div>
+
+          <div id="auth-bearer" class="auth-fields hidden">
+            <label>Token</label>
+            <input id="auth-bearer-token" type="text" placeholder="{{TOKEN}} or paste token" spellcheck="false" />
+            <p class="panel-hint">Sent as <code>Authorization: Bearer &lt;token&gt;</code></p>
+          </div>
+
+          <div id="auth-basic" class="auth-fields hidden">
+            <label>Username</label>
+            <input id="auth-basic-user" type="text" spellcheck="false" />
+            <label>Password</label>
+            <input id="auth-basic-pass" type="password" />
+            <p class="panel-hint">Sent as <code>Authorization: Basic base64(user:pass)</code></p>
+          </div>
+
+          <div id="auth-apikey" class="auth-fields hidden">
+            <label>Key name</label>
+            <input id="auth-apikey-name" type="text" placeholder="X-API-Key" spellcheck="false" />
+            <label>Value</label>
+            <input id="auth-apikey-value" type="text" spellcheck="false" />
+            <label>Add to</label>
+            <select id="auth-apikey-in">
+              <option value="header">Header</option>
+              <option value="query">Query Params</option>
+            </select>
+          </div>
+        </section>
+      </div>
+
+      <!-- ======================= RESPONSE ======================= -->
+      <section class="response-area">
+        <div class="response-header">
+          <h2>Response</h2>
+          <div id="response-meta" class="response-meta hidden">
+            <span id="res-status" class="pill"></span>
+            <span id="res-time" class="meta-item"></span>
+            <span id="res-size" class="meta-item"></span>
+          </div>
+        </div>
+
+        <div id="response-empty" class="response-empty">
+          <p>Send a request to see the response.</p>
+        </div>
+
+        <div id="response-loading" class="response-loading hidden">
+          <div class="spinner"></div><span>Sending request…</span>
+        </div>
+
+        <div id="response-content" class="hidden">
+          <nav class="res-tabs">
+            <button class="res-tab active" data-restab="body">Body</button>
+            <button class="res-tab" data-restab="headers">Headers <span id="res-headers-count" class="badge"></span></button>
+          </nav>
+
+          <div id="restab-body" class="res-panel active">
+            <div class="res-body-toolbar">
+              <div class="view-mode-picker">
+                <button class="view-mode active" data-view="pretty">Pretty</button>
+                <button class="view-mode" data-view="tree">Tree</button>
+                <button class="view-mode" data-view="raw">Raw</button>
+              </div>
+              <button id="btn-copy-response" class="btn btn-small btn-ghost">Copy</button>
+            </div>
+            <pre id="res-body-pretty" class="res-body"></pre>
+            <div id="res-body-tree" class="res-body json-tree hidden"></div>
+            <pre id="res-body-raw" class="res-body hidden"></pre>
+          </div>
+
+          <div id="restab-headers" class="res-panel">
+            <table class="headers-table">
+              <thead><tr><th>Header</th><th>Value</th></tr></thead>
+              <tbody id="res-headers-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ======================= MODALS ======================= -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <!-- Save request -->
+    <div id="modal-save" class="modal hidden">
+      <h3>Save Request</h3>
+      <label>Request name</label>
+      <input id="save-request-name" type="text" placeholder="e.g. Login" />
+      <label>Collection</label>
+      <select id="save-collection-select"></select>
+      <input id="save-new-collection-name" class="hidden" type="text" placeholder="New collection name" />
+      <div class="modal-actions">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button id="btn-confirm-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+
+    <!-- Code snippet -->
+    <div id="modal-snippet" class="modal modal-wide hidden">
+      <h3>Code Snippet</h3>
+      <div class="snippet-lang-picker">
+        <button class="snippet-lang active" data-lang="curl">cURL</button>
+        <button class="snippet-lang" data-lang="fetch">JavaScript (fetch)</button>
+        <button class="snippet-lang" data-lang="axios">JavaScript (axios)</button>
+      </div>
+      <pre id="snippet-output" class="snippet-output"></pre>
+      <div class="modal-actions">
+        <button class="btn" data-close-modal>Close</button>
+        <button id="btn-copy-snippet" class="btn btn-primary">Copy</button>
+      </div>
+    </div>
+
+    <!-- cURL import -->
+    <div id="modal-curl" class="modal modal-wide hidden">
+      <h3>Import cURL</h3>
+      <p class="panel-hint">Paste a cURL command and it will fill the request builder.</p>
+      <textarea id="curl-input" class="body-editor" rows="6" spellcheck="false"
+                placeholder="curl -X POST https://api.example.com/login -H 'Content-Type: application/json' -d '{&quot;user&quot;:&quot;john&quot;}'"></textarea>
+      <p id="curl-error" class="error-text hidden"></p>
+      <div class="modal-actions">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button id="btn-confirm-curl" class="btn btn-primary">Import</button>
+      </div>
+    </div>
+
+    <!-- Environment editor -->
+    <div id="modal-env" class="modal modal-wide hidden">
+      <h3 id="env-modal-title">Edit Environment</h3>
+      <label>Environment name</label>
+      <input id="env-name-input" type="text" placeholder="e.g. Local Dev" />
+      <label>Variables</label>
+      <div id="env-var-rows" class="kv-rows"></div>
+      <p class="panel-hint">Use variables anywhere as <code>{{VARIABLE_NAME}}</code></p>
+      <div class="modal-actions">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button id="btn-confirm-env" class="btn btn-primary">Save Environment</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
